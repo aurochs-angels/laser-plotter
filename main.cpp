@@ -73,13 +73,11 @@ void vConfigureTimerForRunTimeStats( void ) {
 
 int main(void)
 {
-	SemaphoreHandle_t go1 = xSemaphoreCreateBinary();
-	SemaphoreHandle_t go2 = xSemaphoreCreateBinary();
-	new LimitSwitch("limit1", configMINIMAL_STACK_SIZE*3, (tskIDLE_PRIORITY + 1UL), go1, 0, 27);
-	new LimitSwitch("limit2", configMINIMAL_STACK_SIZE*3, (tskIDLE_PRIORITY + 1UL), go2, 0, 28);
+	LimitSwitch* limit1 = new LimitSwitch("limit1", configMINIMAL_STACK_SIZE*3, (tskIDLE_PRIORITY + 1UL), 0, 27);
+	LimitSwitch* limit2 = new LimitSwitch("limit2", configMINIMAL_STACK_SIZE*3, (tskIDLE_PRIORITY + 1UL), 0, 28);
 
-	xTaskCreate(Test1, "test1", configMINIMAL_STACK_SIZE*3, go1, (tskIDLE_PRIORITY + 1UL), nullptr);
-	xTaskCreate(Test2, "test2", configMINIMAL_STACK_SIZE*3, go2, (tskIDLE_PRIORITY + 1UL), nullptr);
+	xTaskCreate(Test1, "test1", configMINIMAL_STACK_SIZE*3, limit1->getSemaphoreHandle(), (tskIDLE_PRIORITY + 1UL), nullptr);
+	xTaskCreate(Test2, "test2", configMINIMAL_STACK_SIZE*3, limit2->getSemaphoreHandle(), (tskIDLE_PRIORITY + 1UL), nullptr);
 	prvSetupHardware();
 
 	vTaskStartScheduler();
