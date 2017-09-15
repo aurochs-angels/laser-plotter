@@ -11,7 +11,6 @@ LimitSwitch::LimitSwitch(
 		const char* taskname,
 		uint16_t stacksize,
 		UBaseType_t priority,
-		SemaphoreHandle_t goSemaphore,
 		int port,
 		int pin,
 		bool invert)
@@ -24,7 +23,7 @@ LimitSwitch::LimitSwitch(
 		  taskname,
 		  stacksize,
 		  priority){
-	go = goSemaphore;
+	go = xSemaphoreCreateBinary();
 }
 
 

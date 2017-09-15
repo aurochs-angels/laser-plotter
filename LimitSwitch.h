@@ -14,7 +14,10 @@
 
 class LimitSwitch: private DigitalIoPin, public Task {
 public:
-	LimitSwitch(const char* taskname, uint16_t stacksize, UBaseType_t priority, SemaphoreHandle_t goSemaphore, int port, int pin, bool invert = 0);
+	LimitSwitch(const char* taskname, uint16_t stacksize, UBaseType_t priority, int port, int pin, bool invert = 0);
+	inline SemaphoreHandle_t getSemaphoreHandle(){
+		return go;
+	}
 private:
 	SemaphoreHandle_t go;
 	void _task() override;
