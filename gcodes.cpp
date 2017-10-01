@@ -5,12 +5,22 @@
  *      Author: aino
  */
 #include "gcodes.h"
-class gCodes {
 
+/*enum gCodes::get() {
 
-	gCodes::commands gCodes::get() {
+	return enum;
+};*/
 
-		return gCodes::commands;
-	}
-};
+void Gcodes::GCodeParser(const char* taskname,
+			uint16_t stacksize, UBaseType_t priority,
+			QueueHandle_t UART_data){
+	this.UART_dataQueue = UART_data;
+
+}
+QueueHandle_t Gcodes::getQueueHandle() {
+
+	return this.commandQueue;
+
+}
+
 
