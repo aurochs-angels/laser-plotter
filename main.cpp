@@ -23,6 +23,7 @@
 #include "semphr.h"
 
 #include "LimitSwitch.h"
+#include "PWMController.h"
 
 /* Sets up system hardware */
 static void prvSetupHardware(void)
@@ -32,6 +33,7 @@ static void prvSetupHardware(void)
 
 	/* Initial LED0 state is off */
 	Board_LED_Set(0, false);
+	Chip_SWM_Init();
 }
 
 /*****************************************************************************
@@ -71,14 +73,45 @@ void vConfigureTimerForRunTimeStats( void ) {
 
 }
 
+void PWMTest(void* pPWM){
+	PWMController pwm = *static_cast<PWMController*>(pPWM);
+	bool rising = true;
+	double cycle = 50.0;
+	while(true){
+		if(rising){
+			if(cycle < 100){
+				++cycle;
+			} else {
+				rising = false;
+			}
+		} else {
+			if(cycle > 0){
+				--cycle;
+			} else {
+				rising = true;
+			}
+		}
+		pwm.setDutycycleL(cycle);
+		vTaskDelay(20);
+	}
+}
+
 int main(void)
 {
+	prvSetupHardware();
+
 	LimitSwitch* limit1 = new LimitSwitch("limit1", configMINIMAL_STACK_SIZE*3, (tskIDLE_PRIORITY + 1UL), 0, 27);
 	LimitSwitch* limit2 = new LimitSwitch("limit2", configMINIMAL_STACK_SIZE*3, (tskIDLE_PRIORITY + 1UL), 0, 28);
 
+	PWMController* pwm = new PWMController(LPC_SCT0);
+	pwm->initCounterL(10000, 50, true);
+	pwm->setOutputL(1, 1, 0, true);
+	pwm->startCounterL();
+
 	xTaskCreate(Test1, "test1", configMINIMAL_STACK_SIZE*3, limit1->getSemaphoreHandle(), (tskIDLE_PRIORITY + 1UL), nullptr);
 	xTaskCreate(Test2, "test2", configMINIMAL_STACK_SIZE*3, limit2->getSemaphoreHandle(), (tskIDLE_PRIORITY + 1UL), nullptr);
-	prvSetupHardware();
+	xTaskCreate(PWMTest, "PWM", configMINIMAL_STACK_SIZE*3, pwm, (tskIDLE_PRIORITY + 1UL), nullptr);
+
 
 	vTaskStartScheduler();
 
