@@ -13,9 +13,11 @@ SerialReader::SerialReader(const char* taskname, uint16_t stacksize,
 }
 void SerialReader::receive() {
 	char code[32];
+	std::string toSend;
 	uint8_t len;
 	len = USB_receive((uint8_t *) code, (uint32_t) 64);
-	xQueueSend(UART_data, (void *) code, portMAX_DELAY);
+	toSend = static_cast<std::string>(code);
+	xQueueSend(UART_data, static_cast<void *>(&toSend), portMAX_DELAY);
 }
 QueueHandle_t SerialReader::getQueueHandle() {
 	return this->UART_data;

@@ -12,6 +12,7 @@
 #include <mutex>
 #include "Fmutex.h"
 #include "user_vcom.h"
+#include "string.h"
 
 class SerialReader {
 public:
