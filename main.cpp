@@ -41,24 +41,26 @@ static void prvSetupHardware(void)
  ****************************************************************************/
 
 void Test1(void* x){
-	SemaphoreHandle_t go = x;
+	LimitSwitch<0>* ls = new LimitSwitch<0>(0, 27);
 	while(1){
-		if(xSemaphoreTake(go, portTICK_PERIOD_MS*10)){
+		if(ls->isEventBitSet()){
 			Board_LED_Set(0, 1);
 		} else {
 			Board_LED_Set(0, 0);
 		}
+		vTaskDelay(10);
 	}
 }
 
 void Test2(void* x){
-	SemaphoreHandle_t go = x;
+	LimitSwitch<1>* ls = new LimitSwitch<1>(0, 28);
 	while(1){
-		if(xSemaphoreTake(go, portTICK_PERIOD_MS*10)){
+		if(ls->isEventBitSet()){
 			Board_LED_Set(1, 1);
 		} else {
 			Board_LED_Set(1, 0);
 		}
+		vTaskDelay(10);
 	}
 }
 
@@ -100,16 +102,13 @@ int main(void)
 {
 	prvSetupHardware();
 
-	LimitSwitch* limit1 = new LimitSwitch("limit1", configMINIMAL_STACK_SIZE*3, (tskIDLE_PRIORITY + 1UL), 0, 27);
-	LimitSwitch* limit2 = new LimitSwitch("limit2", configMINIMAL_STACK_SIZE*3, (tskIDLE_PRIORITY + 1UL), 0, 28);
-
 	PWMController* pwm = new PWMController(LPC_SCT0);
 	pwm->initCounterL(10000, 50, true);
 	pwm->setOutputL(1, 1, 0, true);
 	pwm->startCounterL();
 
-	xTaskCreate(Test1, "test1", configMINIMAL_STACK_SIZE*3, limit1->getSemaphoreHandle(), (tskIDLE_PRIORITY + 1UL), nullptr);
-	xTaskCreate(Test2, "test2", configMINIMAL_STACK_SIZE*3, limit2->getSemaphoreHandle(), (tskIDLE_PRIORITY + 1UL), nullptr);
+	xTaskCreate(Test1, "test1", configMINIMAL_STACK_SIZE*3, nullptr, (tskIDLE_PRIORITY + 1UL), nullptr);
+	xTaskCreate(Test2, "test2", configMINIMAL_STACK_SIZE*3, nullptr, (tskIDLE_PRIORITY + 1UL), nullptr);
 	xTaskCreate(PWMTest, "PWM", configMINIMAL_STACK_SIZE*3, pwm, (tskIDLE_PRIORITY + 1UL), nullptr);
 
 

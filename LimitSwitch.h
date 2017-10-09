@@ -8,19 +8,37 @@
 #ifndef LIMITSWITCH_H_
 #define LIMITSWITCH_H_
 
-#include "DigitalIoPin.h"
+#include "InterruptedInputPin.h"
+#include "FreeRTOS.h"
 #include "aTask.h"
 #include "semphr.h"
+#include "event_groups.h"
 
-class LimitSwitch: private DigitalIoPin, public Task {
+class LimitSwitch_Base {
 public:
-	LimitSwitch(const char* taskname, uint16_t stacksize, UBaseType_t priority, int port, int pin, bool invert = 0);
-	inline SemaphoreHandle_t getSemaphoreHandle(){
-		return go;
-	}
-private:
-	SemaphoreHandle_t go;
-	void _task() override;
+	LimitSwitch_Base(int port, int pin, int channel) : pinControl(port, pin, true, true, channel, true, channel){};
+protected:
+	static EventGroupHandle_t eventGroup;
+	InterruptedInputPin pinControl;
 };
 
-#endif /* LIMITSWITCH_H_ */
+EventGroupHandle_t LimitSwitch_Base::eventGroup = xEventGroupCreate();
+
+template <int channel>
+class LimitSwitch : public LimitSwitch_Base {
+public:
+	LimitSwitch(int port, int pin);
+
+	inline bool isEventBitSet(){
+		return (xEventGroupGetBits(eventGroup) >> channel) & 1;
+	}
+private:
+	inline static LimitSwitch* getLimitSwitch(){
+		return thisPtr;
+	}
+	static LimitSwitch* thisPtr;
+	static void IRQHandler(portBASE_TYPE* pxHigherPriorityWoken);
+};
+
+#include "LimitSwitch.tcc"
+#endif /* LIMITSWITCH_TPP_ */
