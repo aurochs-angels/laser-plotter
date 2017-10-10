@@ -11,27 +11,28 @@ public:
 			QueueHandle_t UART_data);
 	QueueHandle_t getQueueHandle();
 	void parse();
+	typedef enum {G28, M1, M4, M10, G1} codes;
 	struct command{
-		char *code;
+		codes inserted;
 		double x;
 		double y;
 	};
-	command setting(char input[32]){
+	command setting(codes input){
 		command h;
-		h.code = input;
+		h.inserted = input;
 		h.x = NULL;
 		h.y = NULL;
 	}
-	command instrument(char input[32], double degree){
+	command instrument(codes input, double degree){
 		command i;
-		i.code = input;
+		i.inserted = input;
 		i.x = degree;
 		i.y = NULL;
 	}
 
-	command movement(char input[32], double x, double y){
+	command movement(codes input, double x, double y){
 		command m;
-		m.code = input;
+		m.inserted = input;
 		m.x = x;
 		m.y = y;
 	}
