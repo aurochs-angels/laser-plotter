@@ -3,6 +3,7 @@
 #include "queue.h"
 #include <string>
 #include <cstdlib>
+#include <cstring>
 class Gcodes {
 
 public:
@@ -17,20 +18,20 @@ public:
 		double x;
 		double y;
 	};
-	command setting(codes input){
+	Gcodes::command setting(Gcodes::codes input){
 		command h;
 		h.inserted = input;
 		h.x = NULL;
 		h.y = NULL;
 	}
-	command instrument(codes input, double degree){
+	Gcodes::command instrument(codes input, double degree){
 		command i;
 		i.inserted = input;
 		i.x = degree;
 		i.y = NULL;
 	}
 
-	command movement(codes input, double x, double y){
+	Gcodes::command movement(codes input, double x, double y){
 		command m;
 		m.inserted = input;
 		m.x = x;
