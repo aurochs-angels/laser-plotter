@@ -4,6 +4,42 @@
 #include <string>
 #include <cstdlib>
 #include <cstring>
+/*
+ * Gcodes
+ * G28 = return to reference
+ * M10 = initialize move to edges, set max coordinates
+ * G1 Xdouble Ydouble A0 = move to coordinate
+ * M1 double = pencil rotate
+ * M4 double = laser pulse
+ *
+ */
+enum {G28, M1, M4, M10, G1} Codes;
+	struct Command{
+		Codes inserted;
+		double x;
+		double y;
+	};
+	Command setting(Codes input){
+		command h;
+		h.inserted = input;
+
+		return h;
+	}
+	Command instrument(Codes input, double degree){
+		command i;
+		i.inserted = input;
+		i.x = degree;
+		return i;
+	}
+
+	Command movement(Codes input, double x, double y){
+		command m;
+		m.inserted = input;
+		m.x = x;
+		m.y = y;
+		return m;
+	}
+
 class Gcodes {
 
 public:
@@ -12,34 +48,6 @@ public:
 			QueueHandle_t UART_data);
 	QueueHandle_t getQueueHandle();
 	void parse();
-	typedef enum {G28, M1, M4, M10, G1} codes;
-	struct command{
-		codes inserted;
-		double x;
-		double y;
-	};
-	Gcodes::command setting(Gcodes::codes input){
-		command h;
-		h.inserted = input;
-		h.x = NULL;
-		h.y = NULL;
-		return h;
-	}
-	Gcodes::command instrument(codes input, double degree){
-		command i;
-		i.inserted = input;
-		i.x = degree;
-		i.y = NULL;
-		return i;
-	}
-
-	Gcodes::command movement(codes input, double x, double y){
-		command m;
-		m.inserted = input;
-		m.x = x;
-		m.y = y;
-		return m;
-	}
 
 private:
 	QueueHandle_t commandQueue;
