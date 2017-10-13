@@ -6,15 +6,6 @@
  */
 #define _GLIBCXX_USE_C99 1
 #include "gcodes.h"
-/*
- * Gcodes
- * G28 = return to reference
- * M10 = initialize move to edges, set max coordinates
- * G1 Xint Yint A0 = move to coordinate
- * M1 int = pencil rotate
- * M4 int = laser pulse
- *
- */
 
 void Gcodes::GCodeParser(const char* taskname, uint16_t stacksize,
 		UBaseType_t priority, QueueHandle_t UART_data) {
@@ -31,15 +22,16 @@ void Gcodes::parse() {
 	std::string str;
 	std::string first;
 	std::string second;
-	char* sz;
+
 	std::string::size_type test;
+
 	std::size_t position;
 	std::size_t end_pos;
-	const char* f;
+
 	double xCoord;
 	double yCoord;
 	xQueueReceive(UART_dataQueue, &str, portMAX_DELAY);
-	command send;
+	Command send;
 
 	/*************String parsing************/
 	if (str.length() > 4) {
@@ -74,7 +66,12 @@ void Gcodes::parse() {
 		} else {
 			send = setting(G28);
 		}
+
+
 	}
-	xQueueSend(UART_dataQueue, (void *) &send, portMAX_DELAY );
+	else{
+		send = setting(E);
+	}
+	xQueueSend(UART_dataQueue, (void * ) &send, portMAX_DELAY);
 
 }
