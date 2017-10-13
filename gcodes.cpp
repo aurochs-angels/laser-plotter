@@ -9,12 +9,12 @@
 
 void Gcodes::GCodeParser(const char* taskname, uint16_t stacksize,
 		UBaseType_t priority, QueueHandle_t UART_data) {
-	this->UART_dataQueue = UART_data;
+	UART_dataQueue = UART_data;
 
 }
 QueueHandle_t Gcodes::getQueueHandle() {
 
-	return this->commandQueue;
+	return commandQueue;
 
 }
 
@@ -38,13 +38,13 @@ void Gcodes::parse() {
 		if (str.find('G') != std::string::npos) {
 			position = str.find('X');
 			end_pos = str.find('Y');
-			first = str.substr(position, end_pos);
+			first = str.substr(position+1, end_pos);
 
 			xCoord = std::stod(first, &test);
 
 			position = end_pos;
 			end_pos = str.find('A');
-			second = str.substr(position, end_pos);
+			second = str.substr(position+1, end_pos);
 			yCoord = std::stod(second, &test);
 
 			send = movement(G1, xCoord, yCoord);
