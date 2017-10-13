@@ -21,9 +21,13 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
-
 #include "LimitSwitch.h"
+
 #include "PWMController.h"
+#include "Stepper.h"
+
+#include "ITM_write.h"
+#include "RunningTime.h"
 
 /* Sets up system hardware */
 static void prvSetupHardware(void)
@@ -33,36 +37,15 @@ static void prvSetupHardware(void)
 
 	/* Initial LED0 state is off */
 	Board_LED_Set(0, false);
+	Chip_PININT_Init(LPC_GPIO_PIN_INT);
 	Chip_SWM_Init();
+	Chip_MRT_Init();
+	ITM_init();
 }
 
 /*****************************************************************************
  * Public functions
  ****************************************************************************/
-
-void Test1(void* x){
-	LimitSwitch<0>* ls = new LimitSwitch<0>(0, 27);
-	while(1){
-		if(ls->isEventBitSet()){
-			Board_LED_Set(0, 1);
-		} else {
-			Board_LED_Set(0, 0);
-		}
-		vTaskDelay(10);
-	}
-}
-
-void Test2(void* x){
-	LimitSwitch<1>* ls = new LimitSwitch<1>(0, 28);
-	while(1){
-		if(ls->isEventBitSet()){
-			Board_LED_Set(1, 1);
-		} else {
-			Board_LED_Set(1, 0);
-		}
-		vTaskDelay(10);
-	}
-}
 
 /* the following is required if runtime statistics are to be collected */
 extern "C" {
@@ -76,7 +59,7 @@ void vConfigureTimerForRunTimeStats( void ) {
 }
 
 void PWMTest(void* pPWM){
-	PWMController pwm = *static_cast<PWMController*>(pPWM);
+	PWMController& pwm = *static_cast<PWMController*>(pPWM);
 	bool rising = true;
 	double cycle = 50.0;
 	while(true){
@@ -98,19 +81,68 @@ void PWMTest(void* pPWM){
 	}
 }
 
+void StepperTest(void* pStepper){
+	Stepper& stepper = *static_cast<Stepper*>(pStepper);
+	SemaphoreHandle_t done = stepper.getStepsDoneSemaphore();
+	bool direction = true;
+	uint16_t speed[3] = {0,0,0};
+	uint16_t steps[3] = {0,0,0};
+	uint16_t stepsReq[3] = {0,0,0};
+	uint32_t time;
+	while(true){
+		direction = !direction;
+		speed[0] = stepper.getCurrentSpeed();
+		steps[0] = stepper.getSteps();
+		stepper.setDirection(direction);
+		RunningTime::start();
+		stepper.setSpeed(1000);
+		stepsReq[0] = stepper.getStepsRequiredToAccelerate();
+		stepper.runForSteps(stepsReq[0]);
+		xSemaphoreTake(done, portMAX_DELAY);
+//		debugPin.write(toggle = !toggle);
+
+		RunningTime::stop();
+		time = RunningTime::getTime();
+
+		speed[1] = stepper.getCurrentSpeed();
+		steps[1] = stepper.getSteps();
+		RunningTime::start();
+		stepper.setSpeed(0);
+		stepsReq[1] = stepper.getStepsRequiredToAccelerate();
+		stepper.runForSteps(stepsReq[1]);
+		xSemaphoreTake(done, portMAX_DELAY);
+//		debugPin.write(toggle = !toggle);
+		RunningTime::stop();
+		time = RunningTime::getTime();
+		speed[2] = stepper.getCurrentSpeed();
+		steps[2] = stepper.getSteps();
+	}
+}
+
 int main(void)
 {
 	prvSetupHardware();
+	RunningTime::setup();
+
 
 	PWMController* pwm = new PWMController(LPC_SCT0);
-	pwm->initCounterL(10000, 50, true);
+	pwm->initCounterL(10000, 50, true, 1);
 	pwm->setOutputL(1, 1, 0, true);
 	pwm->startCounterL();
 
-	xTaskCreate(Test1, "test1", configMINIMAL_STACK_SIZE*3, nullptr, (tskIDLE_PRIORITY + 1UL), nullptr);
-	xTaskCreate(Test2, "test2", configMINIMAL_STACK_SIZE*3, nullptr, (tskIDLE_PRIORITY + 1UL), nullptr);
-	xTaskCreate(PWMTest, "PWM", configMINIMAL_STACK_SIZE*3, pwm, (tskIDLE_PRIORITY + 1UL), nullptr);
+	LimitSwitch<0>* ls1 = new LimitSwitch<0>(0, 27);
+	LimitSwitch<1>* ls2 = new LimitSwitch<1>(0, 28);
+	Stepper* stepper = new Stepper(
+			//"Stepper", configMINIMAL_STACK_SIZE*2, // Taskname, stack size
+			//(tskIDLE_PRIORITY + 1UL), // Priority
+			0, 24, // Motor drive pin&port
+			1, 0, // Motor direction pin&port
+			0, // MRT channel (0 or 1)
+			*ls2, *ls1); // LimitSwitch_Base& front / back
+	NVIC_EnableIRQ(MRT_IRQn);
 
+	xTaskCreate(PWMTest, "PWM", configMINIMAL_STACK_SIZE*2, pwm, (tskIDLE_PRIORITY + 1UL), nullptr);
+	xTaskCreate(StepperTest, "stepperTest", configMINIMAL_STACK_SIZE*2, stepper, (tskIDLE_PRIORITY + 1UL), nullptr);
 
 	vTaskStartScheduler();
 

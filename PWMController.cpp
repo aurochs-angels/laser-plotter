@@ -16,13 +16,17 @@ PWMController::PWMController(LPC_SCT_T* pSCTimer) {
 }
 
 void PWMController::initCounterL(uint16_t freq, double dutycycle,
-		bool bidirectional) {
+		bool bidirectional, uint8_t prescaler) {
 	L.freq = freq;
 	L.dutycycle = dutycycle;
 	L.bidirectional = bidirectional;
+	L.prescaler = prescaler;
+	if(prescaler > 1){
+		timer->CTRL_L |= ((prescaler - 1) << 5) | (1 << 3);
+	}
 
-	timer->MATCHREL[0].L = periodFromFrequency(freq, L.bidirectional) - 1;
-	timer->MATCHREL[1].L = (periodFromFrequency(freq, L.bidirectional) - 2) * (dutycycle/100.0);
+	timer->MATCHREL[0].L = periodFromFrequencyL(freq) - 1;
+	timer->MATCHREL[1].L = (periodFromFrequencyL(freq) - 2) * (dutycycle/100.0);
 	if(bidirectional){
 		timer->CTRL_L |= (1 << 4); // Bidirectional
 	}
@@ -30,13 +34,17 @@ void PWMController::initCounterL(uint16_t freq, double dutycycle,
 }
 
 void PWMController::initCounterH(uint16_t freq, double dutycycle,
-		bool bidirectional) {
+		bool bidirectional, uint8_t prescaler) {
 	H.freq = freq;
 	H.dutycycle = dutycycle;
 	H.bidirectional = bidirectional;
+	H.prescaler = prescaler;
+	if(prescaler > 1){
+		timer->CTRL_H |= ((prescaler - 1) << 5) | (1 << 3);
+	}
 
-	timer->MATCHREL[0].H = periodFromFrequency(freq, H.bidirectional);
-	timer->MATCHREL[1].H = periodFromFrequency(freq, H.bidirectional) * (dutycycle/100.0);
+	timer->MATCHREL[0].H = periodFromFrequencyH(freq);
+	timer->MATCHREL[1].H = periodFromFrequencyH(freq) * (dutycycle/100.0);
 	if(bidirectional){
 		timer->CTRL_H |= (1 << 4);
 	}
@@ -60,18 +68,22 @@ void PWMController::stopCounterH() {
 }
 
 
-uint16_t PWMController::periodFromFrequency(uint16_t freq, bool bidirectional) {
-	return bidirectional ? (SystemCoreClock / (freq * 2)) : (SystemCoreClock / freq);
+uint16_t PWMController::periodFromFrequencyL(uint16_t freq) {
+	return L.bidirectional ? ((SystemCoreClock / L.prescaler) / (freq * 2)) : ((SystemCoreClock / L.prescaler) / freq);
+}
+
+uint16_t PWMController::periodFromFrequencyH(uint16_t freq) {
+	return H.bidirectional ? ((SystemCoreClock / H.prescaler) / (freq * 2)) : ((SystemCoreClock / H.prescaler) / freq);
 }
 
 void PWMController::setDutycycleL(double dutycycle) {
 	L.dutycycle = dutycycle;
-	timer->MATCHREL[1].L = (periodFromFrequency(L.freq, L.bidirectional) - 2) * (dutycycle / 100.0);
+	timer->MATCHREL[1].L = (periodFromFrequencyL(L.freq) - 2) * (dutycycle / 100.0);
 }
 
 void PWMController::setDutycycleH(double dutycycle) {
 	H.dutycycle = dutycycle;
-	timer->MATCHREL[1].H = (periodFromFrequency(H.freq, H.bidirectional) - 2) * (dutycycle / 100.0);
+	timer->MATCHREL[1].H = (periodFromFrequencyH(H.freq) - 2) * (dutycycle / 100.0);
 
 }
 
@@ -85,12 +97,15 @@ double PWMController::getDutycycleH() {
 
 void PWMController::setFrequencyL(uint16_t freq) {
 	L.freq = freq;
-	timer->MATCHREL[0].L = periodFromFrequency(L.freq, L.bidirectional) - 1;
+	timer->MATCHREL[0].L = periodFromFrequencyL(L.freq) - 1;
+	// Keep the dutycycle the same even if we change frequency
+	timer->MATCHREL[1].L = (periodFromFrequencyL(L.freq) - 2) * (H.dutycycle / 100.0);
 }
 
 void PWMController::setFrequencyH(uint16_t freq) {
 	H.freq = freq;
-	timer->MATCHREL[0].H = periodFromFrequency(L.freq, L.bidirectional) - 1;
+	timer->MATCHREL[0].H = periodFromFrequencyH(H.freq) - 1;
+	timer->MATCHREL[1].H = (periodFromFrequencyH(H.freq) - 2) * (H.dutycycle / 100.0);
 }
 
 uint16_t PWMController::getFrequencyL() {
