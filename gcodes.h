@@ -13,27 +13,27 @@
  * M4 double = laser pulse
  *
  */
-enum {G28, M1, M4, M10, G1} Codes;
+enum Codes {G28, M1, M4, M10, G1, E} ;
 	struct Command{
 		Codes inserted;
 		double x;
 		double y;
 	};
 	Command setting(Codes input){
-		command h;
+		Command h;
 		h.inserted = input;
 
 		return h;
 	}
 	Command instrument(Codes input, double degree){
-		command i;
+		Command i;
 		i.inserted = input;
 		i.x = degree;
 		return i;
 	}
 
 	Command movement(Codes input, double x, double y){
-		command m;
+		Command m;
 		m.inserted = input;
 		m.x = x;
 		m.y = y;

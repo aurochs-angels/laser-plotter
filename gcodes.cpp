@@ -7,8 +7,6 @@
 #define _GLIBCXX_USE_C99 1
 #include "gcodes.h"
 
-
-
 void Gcodes::GCodeParser(const char* taskname, uint16_t stacksize,
 		UBaseType_t priority, QueueHandle_t UART_data) {
 	this->UART_dataQueue = UART_data;
@@ -33,7 +31,7 @@ void Gcodes::parse() {
 	double xCoord;
 	double yCoord;
 	xQueueReceive(UART_dataQueue, &str, portMAX_DELAY);
-	command send;
+	Command send;
 
 	/*************String parsing************/
 	if (str.length() > 4) {
@@ -68,7 +66,12 @@ void Gcodes::parse() {
 		} else {
 			send = setting(G28);
 		}
+
+
 	}
-	xQueueSend(UART_dataQueue, (void *) &send, portMAX_DELAY );
+	else{
+		send = setting(E);
+	}
+	xQueueSend(UART_dataQueue, (void * ) &send, portMAX_DELAY);
 
 }
