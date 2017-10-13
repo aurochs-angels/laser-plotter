@@ -9,29 +9,33 @@
 #define LIMITSWITCH_H_
 
 #include "InterruptedInputPin.h"
-#include "FreeRTOS.h"
+#include "FreeRTOS/FreeRTOS.h"
 #include "aTask.h"
 #include "semphr.h"
 #include "event_groups.h"
+#include "ITM_write.h"
 
+/* Anything non-templated should be here */
 class LimitSwitch_Base {
 public:
-	LimitSwitch_Base(int port, int pin, int channel) : pinControl(port, pin, true, true, channel, true, channel){};
+	LimitSwitch_Base(int port, int pin, int channel);
+	inline static EventGroupHandle_t getEventGroup(){
+		return eventGroup;
+	}
+	inline bool isEventBitSet() const {
+		return (xEventGroupGetBits(eventGroup) >> _channel) & 1;
+	}
 protected:
 	static EventGroupHandle_t eventGroup;
 	InterruptedInputPin pinControl;
+	int _channel;
 };
 
-EventGroupHandle_t LimitSwitch_Base::eventGroup = xEventGroupCreate();
-
+/* Only one limit switch per channel */
 template <int channel>
 class LimitSwitch : public LimitSwitch_Base {
 public:
 	LimitSwitch(int port, int pin);
-
-	inline bool isEventBitSet(){
-		return (xEventGroupGetBits(eventGroup) >> channel) & 1;
-	}
 private:
 	inline static LimitSwitch* getLimitSwitch(){
 		return thisPtr;
@@ -41,4 +45,4 @@ private:
 };
 
 #include "LimitSwitch.tcc"
-#endif /* LIMITSWITCH_TPP_ */
+#endif /* LIMITSWITCH_H_ */
