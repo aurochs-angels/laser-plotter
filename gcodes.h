@@ -23,12 +23,14 @@ public:
 		h.inserted = input;
 		h.x = NULL;
 		h.y = NULL;
+		return h;
 	}
 	Gcodes::command instrument(codes input, double degree){
 		command i;
 		i.inserted = input;
 		i.x = degree;
 		i.y = NULL;
+		return i;
 	}
 
 	Gcodes::command movement(codes input, double x, double y){
@@ -36,6 +38,7 @@ public:
 		m.inserted = input;
 		m.x = x;
 		m.y = y;
+		return m;
 	}
 
 private:

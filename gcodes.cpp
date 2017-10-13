@@ -10,9 +10,9 @@
  * Gcodes
  * G28 = return to reference
  * M10 = initialize move to edges, set max coordinates
- * G1 Xint Yint A0 = move to coordinate
- * M1 int = pencil rotate
- * M4 int = laser pulse
+ * G1 Xdouble Ydouble A0 = move to coordinate
+ * M1 double = pencil rotate
+ * M4 double = laser pulse
  *
  */
 
