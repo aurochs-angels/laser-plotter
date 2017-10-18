@@ -26,6 +26,9 @@ public:
 		return (xEventGroupGetBits(eventGroup) >> _channel) & 1;
 	}
 protected:
+	/* Each LimitSwitch will have invidual bit in event group
+	 * indicating if switch is pressed or not (1 or 0)
+	 */
 	static EventGroupHandle_t eventGroup;
 	InterruptedInputPin pinControl;
 	int _channel;
@@ -37,6 +40,7 @@ class LimitSwitch : public LimitSwitch_Base {
 public:
 	LimitSwitch(int port, int pin);
 private:
+	/* Each LimitSwitch will have its own channel so we can declare everything here static */
 	inline static LimitSwitch* getLimitSwitch(){
 		return thisPtr;
 	}

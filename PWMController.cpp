@@ -22,7 +22,7 @@ void PWMController::initCounterL(uint16_t freq, double dutycycle,
 	L.bidirectional = bidirectional;
 	L.prescaler = prescaler;
 	if(prescaler > 1){
-		timer->CTRL_L |= ((prescaler - 1) << 5) | (1 << 3);
+		timer->CTRL_L |= ((prescaler - 1) << 5) | (1 << 3); // Set prescaler and clear the count
 	}
 
 	timer->MATCHREL[0].L = periodFromFrequencyL(freq) - 1;

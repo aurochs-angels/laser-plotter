@@ -88,35 +88,43 @@ void StepperTest(void* pStepper){
 	uint16_t speed[3] = {0,0,0};
 	uint16_t steps[3] = {0,0,0};
 	uint16_t stepsReq[3] = {0,0,0};
-	uint32_t time;
+	uint32_t time1;
+	uint32_t time2;
+	stepper.setRate(1000, true);
 	while(true){
 		direction = !direction;
-		speed[0] = stepper.getCurrentSpeed();
+		speed[0] = stepper.getCurrentRate();
 		steps[0] = stepper.getSteps();
 		stepper.setDirection(direction);
+
 		RunningTime::start();
-		stepper.setSpeed(1000);
+		stepper.setRate(4500);
 		stepsReq[0] = stepper.getStepsRequiredToAccelerate();
 		stepper.runForSteps(stepsReq[0]);
 		xSemaphoreTake(done, portMAX_DELAY);
-//		debugPin.write(toggle = !toggle);
-
 		RunningTime::stop();
-		time = RunningTime::getTime();
+		time1 = RunningTime::getTime();
 
-		speed[1] = stepper.getCurrentSpeed();
+		speed[1] = stepper.getCurrentRate();
 		steps[1] = stepper.getSteps();
+
 		RunningTime::start();
-		stepper.setSpeed(0);
+		stepper.setRate(1000);
 		stepsReq[1] = stepper.getStepsRequiredToAccelerate();
 		stepper.runForSteps(stepsReq[1]);
 		xSemaphoreTake(done, portMAX_DELAY);
-//		debugPin.write(toggle = !toggle);
 		RunningTime::stop();
-		time = RunningTime::getTime();
-		speed[2] = stepper.getCurrentSpeed();
+
+		time2 = RunningTime::getTime();
+		speed[2] = stepper.getCurrentRate();
 		steps[2] = stepper.getSteps();
 	}
+//	while(true){
+//		stepper.setDirection(direction = !direction);
+//		stepper.setTargetSpeed(600, true);
+//		stepper.runForSteps(500);
+//		xSemaphoreTake(done, portMAX_DELAY);
+//	}
 }
 
 int main(void)
@@ -133,8 +141,6 @@ int main(void)
 	LimitSwitch<0>* ls1 = new LimitSwitch<0>(0, 27);
 	LimitSwitch<1>* ls2 = new LimitSwitch<1>(0, 28);
 	Stepper* stepper = new Stepper(
-			//"Stepper", configMINIMAL_STACK_SIZE*2, // Taskname, stack size
-			//(tskIDLE_PRIORITY + 1UL), // Priority
 			0, 24, // Motor drive pin&port
 			1, 0, // Motor direction pin&port
 			0, // MRT channel (0 or 1)
@@ -142,7 +148,7 @@ int main(void)
 	NVIC_EnableIRQ(MRT_IRQn);
 
 	xTaskCreate(PWMTest, "PWM", configMINIMAL_STACK_SIZE*2, pwm, (tskIDLE_PRIORITY + 1UL), nullptr);
-	xTaskCreate(StepperTest, "stepperTest", configMINIMAL_STACK_SIZE*2, stepper, (tskIDLE_PRIORITY + 1UL), nullptr);
+	xTaskCreate(StepperTest, "stepperTest", configMINIMAL_STACK_SIZE*2, stepper, (tskIDLE_PRIORITY + 2UL), nullptr);
 
 	vTaskStartScheduler();
 
