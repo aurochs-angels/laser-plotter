@@ -20,6 +20,6 @@ void SerialReader::receive() {
 	xQueueSend(UART_data, (&toSend), portMAX_DELAY);
 }
 QueueHandle_t SerialReader::getQueueHandle() {
-	return this->UART_data;
+	return UART_data;
 }
 
