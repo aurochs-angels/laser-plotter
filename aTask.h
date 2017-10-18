@@ -2,7 +2,7 @@
  * Task.h
  *
  *  Created on: 14.9.2017
- *      Author: Ville
+ *      Author: Ville & Reino
  */
 
 #ifndef ATASK_H_
