@@ -83,48 +83,10 @@ void PWMTest(void* pPWM){
 
 void StepperTest(void* pStepper){
 	Stepper& stepper = *static_cast<Stepper*>(pStepper);
-	SemaphoreHandle_t done = stepper.getStepsDoneSemaphore();
-	bool direction = true;
-	uint16_t speed[3] = {0,0,0};
-	uint16_t steps[3] = {0,0,0};
-	uint16_t stepsReq[3] = {0,0,0};
-	uint32_t time1;
-	uint32_t time2;
-	stepper.setRate(1000, true);
+	stepper.calibrate();
 	while(true){
-		direction = !direction;
-		speed[0] = stepper.getCurrentRate();
-		steps[0] = stepper.getSteps();
-		stepper.setDirection(direction);
-
-		RunningTime::start();
-		stepper.setRate(4500);
-		stepsReq[0] = stepper.getStepsRequiredToAccelerate();
-		stepper.runForSteps(stepsReq[0]);
-		xSemaphoreTake(done, portMAX_DELAY);
-		RunningTime::stop();
-		time1 = RunningTime::getTime();
-
-		speed[1] = stepper.getCurrentRate();
-		steps[1] = stepper.getSteps();
-
-		RunningTime::start();
-		stepper.setRate(1000);
-		stepsReq[1] = stepper.getStepsRequiredToAccelerate();
-		stepper.runForSteps(stepsReq[1]);
-		xSemaphoreTake(done, portMAX_DELAY);
-		RunningTime::stop();
-
-		time2 = RunningTime::getTime();
-		speed[2] = stepper.getCurrentRate();
-		steps[2] = stepper.getSteps();
+		vTaskDelay(1000);
 	}
-//	while(true){
-//		stepper.setDirection(direction = !direction);
-//		stepper.setTargetSpeed(600, true);
-//		stepper.runForSteps(500);
-//		xSemaphoreTake(done, portMAX_DELAY);
-//	}
 }
 
 int main(void)

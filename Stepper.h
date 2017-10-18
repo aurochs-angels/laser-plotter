@@ -19,7 +19,7 @@
 #include <cmath>
 
 /* StepControl is the actual control of steps and Stepper does acceleration and provides the API for controlling */
-class Stepper {
+class Stepper : private Task {
 public:
 	class StepControl {
 	public:
@@ -40,16 +40,15 @@ public:
 	};
 	const static uint32_t ACCELERATION_STEP_SIZE;
 	const static double ACCELERATION_STEP_TIME_MS;
-	const static uint32_t MAX_RATE;
-	const static uint32_t MIN_RATE;
-
 	const static uint32_t ACCELERATION;
 
 	Stepper(uint8_t stepPort, uint8_t stepPin,
 			uint8_t dirPort, uint8_t dirPin,
 			uint8_t MRT_channel,
 			const LimitSwitch_Base& front, const LimitSwitch_Base& back);
+	void calibrate();
 	void toggleDirection();
+	void goHome();
 	void runForSteps(uint32_t steps);
 	SemaphoreHandle_t getStepsDoneSemaphore();
 	bool getDirection() const;
@@ -65,19 +64,18 @@ public:
 	void MRT_callback();
 	static Stepper* getStepperByChannel(uint8_t channel);
 private:
+	void _task() override;
 	static Stepper* stepperByChannel[2];
 	void _accelerate();
 	LPC_MRT_CH_T* accelMRT_CH;
-	EventGroupHandle_t go;
-	uint16_t targetSpeed;
-	volatile uint16_t currentSpeed;
 	volatile uint32_t currentRate;
 	uint32_t targetRate;
 	DigitalIoPin dirControl;
 	StepControl stepControl;
 	const LimitSwitch_Base& limitFront;
 	const LimitSwitch_Base& limitBack;
-	uint32_t steps;
+	uint32_t currentSteps;
+	uint32_t maxSteps;
 	bool stop;
 
 	/* false: going forward, true going forward */
