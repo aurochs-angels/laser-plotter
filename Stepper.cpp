@@ -16,11 +16,9 @@
 #include "itoa.h"
 #endif
 
-const uint32_t Stepper::MAX_RATE = 4000;
-const uint32_t Stepper::MIN_RATE = 1000;
 const uint32_t Stepper::ACCELERATION_STEP_SIZE = 8;
 const double Stepper::ACCELERATION_STEP_TIME_MS = 1.0;
-const uint32_t Stepper::ACCELERATION = (ACCELERATION_STEP_SIZE / (ACCELERATION_STEP_TIME_MS/1000));
+const uint32_t Stepper::ACCELERATION = (ACCELERATION_STEP_SIZE*1000 / ACCELERATION_STEP_TIME_MS);
 
 Stepper* Stepper::stepperByChannel[2];
 
@@ -32,18 +30,21 @@ Stepper::Stepper(uint8_t stepPort, uint8_t stepPin,
 		uint8_t dirPort, uint8_t dirPin,
 		uint8_t MRT_channel,
 		const LimitSwitch_Base& front, const LimitSwitch_Base& back) :
+  Task("Stepper", configMINIMAL_STACK_SIZE*2, (tskIDLE_PRIORITY + 1UL)),
   accelMRT_CH(LPC_MRT_CH(MRT_channel+2)),
   dirControl(dirPort, dirPin, DigitalIoPin::output, false),
   stepControl(stepPort, stepPin, MRT_channel, this),
-  limitFront(front), limitBack(back) {
+  limitFront(front), limitBack(back){
 	direction = false;
 	stop = false;
-	go = xEventGroupCreate();
-	steps = 0;
+	currentSteps = 37971978; // Something big to allow calibration to not underflow when reversing.
 	stepsDone = xSemaphoreCreateBinary();
 	targetRate = 0;
 	currentRate = 0;
 	stepperByChannel[MRT_channel] = this;
+
+	// set maxSteps to something ridicilously big to allow calibration to touch the limit switches
+	maxSteps = UINT32_MAX;
 }
 
 void Stepper::toggleDirection() {
@@ -84,6 +85,26 @@ void Stepper::MRT_callback() {
 	_accelerate();
 }
 
+void Stepper::calibrate() {
+	toggleDirection(); // Go "backwards" first
+	setRate(1000, true);
+	runForSteps(UINT32_MAX); // Run until we hit a switch
+	setStop(false); // Clear stop flag
+
+	toggleDirection();
+	runForSteps(20); // Back off from the limit switch
+
+	zeroSteps();
+	runForSteps(UINT32_MAX); // Run to the other switch.
+	setStop(false);
+
+	toggleDirection();
+	runForSteps(20); // Back off from the limit switch
+	maxSteps = currentSteps;
+
+	goHome();
+}
+
 void Stepper::_accelerate(){
 	if(currentRate < targetRate){
 		currentRate += ACCELERATION_STEP_SIZE;
@@ -107,7 +128,7 @@ void Stepper::setDirection(bool dir) {
 }
 
 uint32_t Stepper::getSteps() const {
-	return steps;
+	return currentSteps;
 }
 
 
@@ -116,6 +137,8 @@ void Stepper::runForSteps(uint32_t steps){
 	accelMRT_CH->CTRL |= 1;
 	stepControl.setStepsToRun(steps);
 	stepControl.start();
+
+	xSemaphoreTake(stepsDone, portMAX_DELAY);
 }
 
 uint32_t Stepper::getStepsRequiredToAccelerate() const {
@@ -133,7 +156,13 @@ uint32_t Stepper::getRateAchievable(uint32_t steps, bool max) {
 }
 
 void Stepper::zeroSteps() {
-	steps = 0;
+	currentSteps = 0;
+}
+
+void Stepper::_task() {
+	while(true){
+		vTaskDelay(1000);
+	}
 }
 
 Stepper::StepControl::StepControl(uint8_t stepPort, uint8_t stepPin, uint8_t MRT_channel, Stepper* stepper)
@@ -180,8 +209,9 @@ void Stepper::StepControl::setStepsToRun(uint32_t steps) {
 void Stepper::StepControl::MRT_callback(){
 	if(stepsToRun != 0){
 		bool limit = _stepper->direction ? _stepper->limitBack.isEventBitSet() : _stepper->limitFront.isEventBitSet();
+		bool maxed = !_stepper->direction ? _stepper->currentSteps == _stepper->maxSteps : _stepper->currentSteps == 0;
 
-		if(!(limit || _stepper->stop))
+		if(!(limit || _stepper->stop || maxed))
 		{
 			pulse();
 			start();
@@ -189,12 +219,13 @@ void Stepper::StepControl::MRT_callback(){
 		} else {
 			stop();
 			_stepper->stop = true;
+			xSemaphoreGive(_stepper->stepsDone);
 		}
 	} else {
 		stop();
 		xSemaphoreGive(_stepper->stepsDone);
 	}
-	_stepper->steps = !_stepper->direction ? _stepper->steps+1 : _stepper->steps-1;
+	_stepper->currentSteps = !_stepper->direction ? _stepper->currentSteps+1 : _stepper->currentSteps-1;
 }
 
 extern "C" void MRT_IRQHandler(void) {
@@ -225,4 +256,9 @@ extern "C" void MRT_IRQHandler(void) {
 		stepper->MRT_callback();
 	}
 	portEND_SWITCHING_ISR(pxHigherPriorityTaskWoken);
+}
+
+void Stepper::goHome() {
+	setDirection(true);
+	runForSteps(currentSteps/2);
 }
