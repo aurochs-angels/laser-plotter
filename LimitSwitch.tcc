@@ -13,7 +13,7 @@ template <int channel>
 void LimitSwitch<channel>::IRQHandler(portBASE_TYPE* pxHigherPriorityTaskWoken){
 	static TickType_t time = 0;
 	static bool lastInterruptWasFall = false;
-	if(xTaskGetTickCountFromISR() - time > 2){
+	if(xTaskGetTickCountFromISR() - time > 10){
 		if((((LPC_GPIO_PIN_INT->FALL) >> channel) & 1)
 		&& !lastInterruptWasFall){ // Buttons go low when pressed.
 			xEventGroupSetBitsFromISR(getLimitSwitch()->eventGroup, (1 << channel), pxHigherPriorityTaskWoken);
