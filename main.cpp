@@ -87,8 +87,8 @@ void PWMTest(void* pPWM){
 
 void StepperTest(void* pStepper){
 	auto sendOK = [](){
-		static uint8_t ok[4] = {'O', 'K', '\r', '\n'};
-		USB_send(ok, 4);
+		static uint8_t ok[5] = {'O', 'K', '\r', '\n', '\0'};
+		USB_send(ok, 5);
 	};
 
 	LimitSwitch<0> lsY1(0, 29);
@@ -193,16 +193,6 @@ void StepperTest(void* pStepper){
 			break;
 		}
 	}
-	/*while(true){
-
-		stepperY.setRate(Stepper::getSpeedForShorterAxle(3000, 10000, stepperX.getCurrentRate()));
-		stepperX.runForSteps(10000);
-		stepperY.runForSteps(3000);
-		Stepper::waitForAllSteppers();
-		vTaskDelay(1000);
-		stepperY.toggleDirection();
-		stepperX.toggleDirection();
-	}*/
 }
 
 int main(void)
@@ -210,18 +200,8 @@ int main(void)
 	prvSetupHardware();
 	RunningTime::setup();
 
-
-	/*PWMController* pwm = new PWMController(LPC_SCT0);
-	pwm->initCounterL(10000, 50, true, 1);
-	pwm->setOutputL(1, 1, 0, true);
-	pwm->startCounterL();*/
-
-	//PWMController servo = new PWMController(LPC_SCT0);
-	//pwm->initCounterL();
-
 	NVIC_EnableIRQ(MRT_IRQn);
 
-	//xTaskCreate(PWMTest, "PWM", configMINIMAL_STACK_SIZE*2, pwm, (tskIDLE_PRIORITY + 1UL), nullptr);
 	xTaskCreate(StepperTest, "stepperTest", configMINIMAL_STACK_SIZE*14, nullptr, (tskIDLE_PRIORITY + 2UL), nullptr);
 	xTaskCreate(cdc_task, "CDC", configMINIMAL_STACK_SIZE*4, nullptr, (tskIDLE_PRIORITY + 1UL), nullptr);
 

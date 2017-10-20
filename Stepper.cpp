@@ -31,7 +31,7 @@ Stepper::Stepper(uint8_t stepPort, uint8_t stepPin,
 		uint8_t dirPort, uint8_t dirPin,
 		uint8_t MRT_channel,
 		const LimitSwitch_Base& front, const LimitSwitch_Base& back) :
-  Task("Stepper", configMINIMAL_STACK_SIZE*4, (tskIDLE_PRIORITY + 1UL)),
+  Task("Stepper", configMINIMAL_STACK_SIZE*4, (tskIDLE_PRIORITY + 3UL)),
   accelMRT_CH(LPC_MRT_CH(MRT_channel+2)),
   dirControl(dirPort, dirPin, DigitalIoPin::output, false),
   stepControl(stepPort, stepPin, MRT_channel, this),
@@ -248,12 +248,14 @@ void Stepper::goHome() {
 }
 
 void Stepper::_runForSteps(uint32_t steps) {
-	accelMRT_CH->INTVAL = Chip_Clock_GetSystemClockRate() / (1000/ACCELERATION_STEP_TIME_MS);
-	accelMRT_CH->CTRL |= 1;
-	stepControl.setStepsToRun(steps);
-	stepControl.start();
+	if(steps > 0){
+		accelMRT_CH->INTVAL = Chip_Clock_GetSystemClockRate() / (1000/ACCELERATION_STEP_TIME_MS);
+		accelMRT_CH->CTRL |= 1;
+		stepControl.setStepsToRun(steps);
+		stepControl.start();
 
-	xEventGroupWaitBits(done, (1 << (channel+2)), pdTRUE, pdTRUE, portMAX_DELAY);
+		xEventGroupWaitBits(done, (1 << (channel+2)), pdTRUE, pdTRUE, portMAX_DELAY);
+	}
 }
 
 uint32_t Stepper::getSpeedForShorterAxle(uint32_t stepsShort,
