@@ -9,36 +9,29 @@
 #include "ITM_write.h"
 
 Command Parser::getCommand() {
-	uint32_t len = USB_receive(recvBuffer, RCV_BUFSIZE);
+	uint32_t len = USB_receive(reinterpret_cast<uint8_t*>(recvBuffer), RCV_BUFSIZE);
 	recvBuffer[len] = '\0';
-	ITM_write(reinterpret_cast<char*>(recvBuffer));
-	char character = *recvBuffer;
-	uint32_t integer;
+	ITM_write(recvBuffer);
+	char code[5];
+	char params[27];
+	int angle, intensity;
 	double x;
 	double y;
-	int nParams;
-	if(character == 'M')
-		nParams = sscanf(reinterpret_cast<char*>(recvBuffer+1), "%lu %lf", &integer, &x);
-	else
-		nParams = sscanf(reinterpret_cast<char*>(recvBuffer+1), "%lu X%lf Y%lf", &integer, &x, &y);
-
-	if(nParams < 1){
-		return Command {CODES::E,0,0};
+	sscanf(recvBuffer, "%s %[^\t\n]", code, params);
+	if (strcmp(code, "G1") == 0) {
+		sscanf(params, "X%lf Y%lf", &x,&y);
+		return Command {CODES::G1, x, y};
+	} else if (strcmp(code, "M1") == 0) {
+		sscanf(params, "%d", &angle);
+		return Command {CODES::M1, angle};
+	} else if (strcmp(code, "M4") == 0) {
+		sscanf(params, "%d", &intensity);
+		return Command {CODES::M4, intensity};
+	} else if (strcmp(code, "M10") == 0) {
+		return Command {CODES::M10};
+	} else if (strcmp(code, "G28") == 0) {
+		return Command {CODES::G28};
+	} else {
+		return Command {CODES::E};
 	}
-
-	if(character == 'M'){
-		if(nParams == 2){
-			if(integer == 1) return Command {CODES::M1, x};
-			else if(integer == 4) return Command {CODES::M4, x};
-		} else if(integer == 10) return Command {CODES::M10};
-
-	} else if (character == 'G'){
-		if(integer == 1)
-			if(nParams == 3)
-				return Command {CODES::G1, x, y};
-		if(integer == 28)
-			return Command{CODES::G28};
-
-	}
-	return Command {CODES::E,0,0};
 }
