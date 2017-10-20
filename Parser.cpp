@@ -34,7 +34,7 @@ Command Parser::getCommand() {
 
 	} else if (character == 'G'){
 		if(integer == 1)
-			if(nParams == 4)
+			if(nParams == 3)
 				return Command {CODES::G1, x, y};
 		if(integer == 28)
 			return Command{CODES::G28};
