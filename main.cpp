@@ -115,7 +115,7 @@ void StepperTest(void* pStepper){
 	 * so setting the prescaler to 12 results in nice 60000 (timer ticks)
 	 * if using bidirectional mode. See PWMController::periodFromFrequencyL().
 	 * */
-	pen.initCounterL(50, 3, true, 12);
+	pen.initCounterL(50, 5, true, 12);
 	pen.setOutputL(0, 10, 0, true);
 	pen.startCounterL();
 //
@@ -123,7 +123,7 @@ void StepperTest(void* pStepper){
 //	stepperX.calibrate();
 //	Stepper::waitForAllSteppers();
 
-	pen.setDutycycleL(2);
+	pen.setDutycycleL(5);
 	stepperY.setRate(4000, true);
 	stepperX.setRate(4000, true);
 
@@ -136,18 +136,18 @@ void StepperTest(void* pStepper){
 			uint32_t currentPosY = stepperY.getSteps()/2;
 			uint32_t targetPosX = cmd.x*100;
 			uint32_t targetPosY = cmd.y*100;
-			bool directionX = false;
-			bool directionY = false;
+			bool directionX = true;
+			bool directionY = true;
 			uint32_t stepsX;
 			uint32_t stepsY;
 			if(currentPosX < targetPosX){
 				stepsX = targetPosX-currentPosX;
-				directionX = true;
+				directionX = false;
 			} else stepsX = currentPosX-targetPosX;
 
 			if(currentPosY < targetPosY){
 				stepsY = targetPosY-currentPosY;
-				directionY = true;
+				directionY = false;
 			} else stepsY = currentPosY-targetPosY;
 
 			stepperX.setDirection(directionX);
@@ -163,6 +163,7 @@ void StepperTest(void* pStepper){
 			stepperY.runForSteps(stepsY);
 			Stepper::waitForAllSteppers();
 			sendOK();
+			ITM_write("OK");
 			break;
 		}
 		case CODES::G28:
@@ -173,13 +174,14 @@ void StepperTest(void* pStepper){
 			break;
 		case CODES::M1:
 		{
-			uint16_t dutycycle = cmd.x/(2.55*50)+2;
-			pen.setDutycycleL(dutycycle); // Dutycycle 2 - 4%
+			uint16_t dutycycle = cmd.x/(2.55*20)+5;
+			pen.setDutycycleL(dutycycle); // Dutycycle 5 - 10%
 			sendOK();
 		}
 			break;
 		case CODES::M4:
 			//laser
+			sendOK();
 			break;
 		case CODES::M10:
 			stepperX.calibrate();
@@ -221,7 +223,7 @@ int main(void)
 
 	//xTaskCreate(PWMTest, "PWM", configMINIMAL_STACK_SIZE*2, pwm, (tskIDLE_PRIORITY + 1UL), nullptr);
 	xTaskCreate(StepperTest, "stepperTest", configMINIMAL_STACK_SIZE*14, nullptr, (tskIDLE_PRIORITY + 2UL), nullptr);
-	xTaskCreate(cdc_task, "CDC", configMINIMAL_STACK_SIZE*4, nullptr, (tskIDLE_PRIORITY + 2UL), nullptr);
+	xTaskCreate(cdc_task, "CDC", configMINIMAL_STACK_SIZE*4, nullptr, (tskIDLE_PRIORITY + 1UL), nullptr);
 
 	vTaskStartScheduler();
 

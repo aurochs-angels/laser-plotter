@@ -121,7 +121,7 @@ void PWMController::setOutputL(uint8_t port, uint8_t pin, uint8_t outindex,
 		bool on) {
 	if(L.bidirectional)
 		timer->OUTPUTDIRCTRL |= (0x1 << (outindex * 2));
-	timer->OUT[outindex].SET = (1 << 0);
+	timer->OUT[outindex].CLR = (1 << 0);
 	if(outindex > 2){
 		Chip_SWM_EnableFixedPin(getFixedSWMPin(outindex));
 	} else {
@@ -135,7 +135,7 @@ void PWMController::setOutputH(uint8_t port, uint8_t pin, uint8_t outindex,
 		bool on) {
 	if(H.bidirectional)
 		timer->OUTPUTDIRCTRL |= (0x2 << (outindex * 2));
-	timer->OUT[outindex].SET = (1 << 1);
+	timer->OUT[outindex].CLR = (1 << 1);
 	if(outindex > 2){
 		Chip_SWM_EnableFixedPin(getFixedSWMPin(outindex));
 	} else {

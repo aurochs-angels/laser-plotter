@@ -172,8 +172,8 @@ void Stepper::StepControl::setInterval(uint32_t rate){
 void Stepper::StepControl::start(){
 	stepCtrlMRT_CH->INTVAL = currentInterval;
 
-	if( currentInterval+_stepper->targetRate == 0 ){
-		xEventGroupClearBits(done, (1 << (_stepper->channel+2)));
+	if( currentInterval == 0 ){
+		xEventGroupSetBits(done, (1 << (_stepper->channel+2)));
 		stop();
 		return;
 	}
@@ -203,6 +203,7 @@ void Stepper::StepControl::MRT_callback(portBASE_TYPE* pxHigherPriorityWoken){
 			start();
 			--stepsToRun;
 		} else {
+			ITM_write("Staahp");
 			stop();
 			_stepper->stop = true;
 			xEventGroupSetBitsFromISR(done, (1 << (_stepper->channel+2)), pxHigherPriorityWoken);
