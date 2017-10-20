@@ -82,10 +82,47 @@ void PWMTest(void* pPWM){
 }
 
 void StepperTest(void* pStepper){
-	Stepper& stepper = *static_cast<Stepper*>(pStepper);
-	stepper.calibrate();
+	LimitSwitch<0> lsY1(0, 29);
+	LimitSwitch<1> lsY2(0, 9);
+	LimitSwitch<2> lsX1(1, 3);
+	LimitSwitch<3> lsX2(0, 0);
+
+	Stepper stepperX(
+			0, 27, // Motor drive pin&port
+			0, 28, // Motor direction pin&port
+			0, // MRT channel (0 or 1)
+			lsX2, lsX1); // LimitSwitch_Base& front / back
+
+	Stepper stepperY(
+			0, 24,
+			1, 0,
+			1,
+			lsY2, lsY1);
+
+	PWMController pen(LPC_SCT0);
+	pen.initCounterL(50, 3, true, 1);
+	pen.setOutputL(0, 10, 0, true);
+	pen.startCounterL();
+
+	stepperY.calibrate();
+	stepperX.calibrate();
+	Stepper::waitForAllSteppers();
+
+	pen.setDutycycleL(2.1);
+	stepperY.setRate(4000, true);
+	stepperX.setRate(4000, true);
+	stepperX.runForSteps(5000);
+	stepperY.runForSteps(5000);
+	Stepper::waitForAllSteppers();
 	while(true){
+
+		stepperY.setRate(Stepper::getSpeedForShorterAxle(3000, 10000, stepperX.getCurrentRate()));
+		stepperX.runForSteps(10000);
+		stepperY.runForSteps(3000);
+		Stepper::waitForAllSteppers();
 		vTaskDelay(1000);
+		stepperY.toggleDirection();
+		stepperX.toggleDirection();
 	}
 }
 
@@ -95,22 +132,18 @@ int main(void)
 	RunningTime::setup();
 
 
-	PWMController* pwm = new PWMController(LPC_SCT0);
+	/*PWMController* pwm = new PWMController(LPC_SCT0);
 	pwm->initCounterL(10000, 50, true, 1);
 	pwm->setOutputL(1, 1, 0, true);
-	pwm->startCounterL();
+	pwm->startCounterL();*/
 
-	LimitSwitch<0>* ls1 = new LimitSwitch<0>(0, 27);
-	LimitSwitch<1>* ls2 = new LimitSwitch<1>(0, 28);
-	Stepper* stepper = new Stepper(
-			0, 24, // Motor drive pin&port
-			1, 0, // Motor direction pin&port
-			0, // MRT channel (0 or 1)
-			*ls2, *ls1); // LimitSwitch_Base& front / back
+	//PWMController servo = new PWMController(LPC_SCT0);
+	//pwm->initCounterL();
+
 	NVIC_EnableIRQ(MRT_IRQn);
 
-	xTaskCreate(PWMTest, "PWM", configMINIMAL_STACK_SIZE*2, pwm, (tskIDLE_PRIORITY + 1UL), nullptr);
-	xTaskCreate(StepperTest, "stepperTest", configMINIMAL_STACK_SIZE*2, stepper, (tskIDLE_PRIORITY + 2UL), nullptr);
+	//xTaskCreate(PWMTest, "PWM", configMINIMAL_STACK_SIZE*2, pwm, (tskIDLE_PRIORITY + 1UL), nullptr);
+	xTaskCreate(StepperTest, "stepperTest", configMINIMAL_STACK_SIZE*6, nullptr, (tskIDLE_PRIORITY + 2UL), nullptr);
 
 	vTaskStartScheduler();
 

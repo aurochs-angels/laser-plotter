@@ -29,7 +29,7 @@ public:
 		void stop();
 		void pulse();
 		void setStepsToRun(uint32_t steps);
-		void MRT_callback();
+		void MRT_callback(portBASE_TYPE* pxHigherPriorityWoken);
 	private:
 		Stepper* _stepper;
 		LPC_MRT_CH_T* stepCtrlMRT_CH;
@@ -50,7 +50,6 @@ public:
 	void toggleDirection();
 	void goHome();
 	void runForSteps(uint32_t steps);
-	SemaphoreHandle_t getStepsDoneSemaphore();
 	bool getDirection() const;
 	void setDirection(bool dir);
 	void setRate(uint32_t rate, bool instant = false);
@@ -61,12 +60,21 @@ public:
 	uint32_t getSteps() const;
 	uint32_t getStepsRequiredToAccelerate() const;
 	uint32_t getRateAchievable(uint32_t steps, bool max = true);
-	void MRT_callback();
+	static uint32_t getSpeedForShorterAxle(uint32_t stepsShort, uint32_t stepsLong, uint32_t speedLong);
+	void MRT_callback(portBASE_TYPE* pxHigherPriorityWoken);
 	static Stepper* getStepperByChannel(uint8_t channel);
+	static void waitForAllSteppers();
 private:
+	typedef void (Stepper::*actionFunc)(uint32_t);
+	struct action {
+		actionFunc f;
+		uint32_t param;
+	};
 	void _task() override;
 	static Stepper* stepperByChannel[2];
 	void _accelerate();
+	void _runForSteps(uint32_t steps);
+	void _calibrate(uint32_t nothing = 0);
 	LPC_MRT_CH_T* accelMRT_CH;
 	volatile uint32_t currentRate;
 	uint32_t targetRate;
@@ -76,11 +84,13 @@ private:
 	const LimitSwitch_Base& limitBack;
 	uint32_t currentSteps;
 	uint32_t maxSteps;
+	uint8_t channel;
 	bool stop;
 
 	/* false: going forward, true going forward */
 	bool direction;
-	SemaphoreHandle_t stepsDone;
+	static EventGroupHandle_t done;
+	QueueHandle_t actionQueue;
 };
 
 #endif /* STEPPER_H_ */
