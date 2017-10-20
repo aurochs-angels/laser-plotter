@@ -28,7 +28,7 @@ class Parser {
 public:
 	Command getCommand();
 private:
-	uint8_t recvBuffer[RCV_BUFSIZE];
+	char recvBuffer[RCV_BUFSIZE];
 };
 
 #endif /* PARSER_H_ */
