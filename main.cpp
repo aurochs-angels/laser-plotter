@@ -29,6 +29,10 @@
 #include "ITM_write.h"
 #include "RunningTime.h"
 
+#include "user_vcom.h"
+
+#include "Parser.h"
+
 /* Sets up system hardware */
 static void prvSetupHardware(void)
 {
@@ -82,10 +86,16 @@ void PWMTest(void* pPWM){
 }
 
 void StepperTest(void* pStepper){
+	auto sendOK = [](){
+		static uint8_t ok[4] = {'O', 'K', '\r', '\n'};
+		USB_send(ok, 4);
+	};
+
 	LimitSwitch<0> lsY1(0, 29);
 	LimitSwitch<1> lsY2(0, 9);
 	LimitSwitch<2> lsX1(1, 3);
 	LimitSwitch<3> lsX2(0, 0);
+	Parser parser;
 
 	Stepper stepperX(
 			0, 27, // Motor drive pin&port
@@ -100,21 +110,88 @@ void StepperTest(void* pStepper){
 			lsY2, lsY1);
 
 	PWMController pen(LPC_SCT0);
-	pen.initCounterL(50, 3, true, 1);
+
+	/* Period of the counter needs to stay below 65535,
+	 * so setting the prescaler to 12 results in nice 60000 (timer ticks)
+	 * if using bidirectional mode. See PWMController::periodFromFrequencyL().
+	 * */
+	pen.initCounterL(50, 3, true, 12);
 	pen.setOutputL(0, 10, 0, true);
 	pen.startCounterL();
+//
+//	stepperY.calibrate();
+//	stepperX.calibrate();
+//	Stepper::waitForAllSteppers();
 
-	stepperY.calibrate();
-	stepperX.calibrate();
-	Stepper::waitForAllSteppers();
-
-	pen.setDutycycleL(2.1);
+	pen.setDutycycleL(2);
 	stepperY.setRate(4000, true);
 	stepperX.setRate(4000, true);
-	stepperX.runForSteps(5000);
-	stepperY.runForSteps(5000);
-	Stepper::waitForAllSteppers();
+
+	vTaskDelay(500);
 	while(true){
+		Command cmd = parser.getCommand();
+		switch(cmd.code){
+		case CODES::G1:{
+			uint32_t currentPosX = stepperX.getSteps()/2;
+			uint32_t currentPosY = stepperY.getSteps()/2;
+			uint32_t targetPosX = cmd.x*100;
+			uint32_t targetPosY = cmd.y*100;
+			bool directionX = false;
+			bool directionY = false;
+			uint32_t stepsX;
+			uint32_t stepsY;
+			if(currentPosX < targetPosX){
+				stepsX = targetPosX-currentPosX;
+				directionX = true;
+			} else stepsX = currentPosX-targetPosX;
+
+			if(currentPosY < targetPosY){
+				stepsY = targetPosY-currentPosY;
+				directionY = true;
+			} else stepsY = currentPosY-targetPosY;
+
+			stepperX.setDirection(directionX);
+			stepperY.setDirection(directionY);
+			if(stepsX > stepsY){
+				stepperX.setRate(3000, true);
+				stepperY.setRate(Stepper::getSpeedForShorterAxle(stepsY, stepsX, stepperX.getCurrentRate()));
+			} else {
+				stepperY.setRate(3000, true);
+				stepperX.setRate(Stepper::getSpeedForShorterAxle(stepsX, stepsY, stepperY.getCurrentRate()));
+			}
+			stepperX.runForSteps(stepsX);
+			stepperY.runForSteps(stepsY);
+			Stepper::waitForAllSteppers();
+			sendOK();
+			break;
+		}
+		case CODES::G28:
+			stepperX.goHome();
+			stepperY.goHome();
+			Stepper::waitForAllSteppers();
+			sendOK();
+			break;
+		case CODES::M1:
+		{
+			uint16_t dutycycle = cmd.x/(2.55*50)+2;
+			pen.setDutycycleL(dutycycle); // Dutycycle 2 - 4%
+			sendOK();
+		}
+			break;
+		case CODES::M4:
+			//laser
+			break;
+		case CODES::M10:
+			stepperX.calibrate();
+			stepperY.calibrate();
+			Stepper::waitForAllSteppers();
+			sendOK();
+			break;
+		case CODES::E:
+			break;
+		}
+	}
+	/*while(true){
 
 		stepperY.setRate(Stepper::getSpeedForShorterAxle(3000, 10000, stepperX.getCurrentRate()));
 		stepperX.runForSteps(10000);
@@ -123,7 +200,7 @@ void StepperTest(void* pStepper){
 		vTaskDelay(1000);
 		stepperY.toggleDirection();
 		stepperX.toggleDirection();
-	}
+	}*/
 }
 
 int main(void)
@@ -143,7 +220,8 @@ int main(void)
 	NVIC_EnableIRQ(MRT_IRQn);
 
 	//xTaskCreate(PWMTest, "PWM", configMINIMAL_STACK_SIZE*2, pwm, (tskIDLE_PRIORITY + 1UL), nullptr);
-	xTaskCreate(StepperTest, "stepperTest", configMINIMAL_STACK_SIZE*6, nullptr, (tskIDLE_PRIORITY + 2UL), nullptr);
+	xTaskCreate(StepperTest, "stepperTest", configMINIMAL_STACK_SIZE*14, nullptr, (tskIDLE_PRIORITY + 2UL), nullptr);
+	xTaskCreate(cdc_task, "CDC", configMINIMAL_STACK_SIZE*4, nullptr, (tskIDLE_PRIORITY + 2UL), nullptr);
 
 	vTaskStartScheduler();
 
